@@ -252,6 +252,11 @@ DOCTEST_MSVC_SUPPRESS_WARNING(26812) // Prefer 'enum class' over 'enum'
 #undef DOCTEST_CONFIG_POSIX_SIGNALS
 #endif // DOCTEST_CONFIG_NO_POSIX_SIGNALS
 
+#if defined(DOCTEST_CONFIG_CUSTOM_CRASH_HANDLER)
+#undef DOCTEST_CONFIG_POSIX_SIGNALS
+#undef DOCTEST_CONFIG_WINDOWS_SEH
+#endif
+
 #ifndef DOCTEST_CONFIG_NO_EXCEPTIONS
 #if !defined(__cpp_exceptions) && !defined(__EXCEPTIONS) && !defined(_CPPUNWIND)
 #define DOCTEST_CONFIG_NO_EXCEPTIONS
@@ -4172,7 +4177,17 @@ namespace detail {
 namespace {
     using namespace detail;
 
-#if !defined(DOCTEST_CONFIG_POSIX_SIGNALS) && !defined(DOCTEST_CONFIG_WINDOWS_SEH)
+#if defined(DOCTEST_CONFIG_CUSTOM_CRASH_HANDLER)
+    struct FatalConditionHandler
+    {
+        FatalConditionHandler();
+        ~FatalConditionHandler();
+
+        static void reset();
+        static void allocateAltStackMem();
+        static void freeAltStackMem();
+    };
+#elif !defined(DOCTEST_CONFIG_POSIX_SIGNALS) && !defined(DOCTEST_CONFIG_WINDOWS_SEH)
     struct FatalConditionHandler
     {
         static void reset() {}
@@ -4330,7 +4345,6 @@ namespace {
     bool FatalConditionHandler::isSet = false;
     ULONG FatalConditionHandler::guaranteeSize = 0;
     LPTOP_LEVEL_EXCEPTION_FILTER FatalConditionHandler::previousTop = nullptr;
-
 #else // DOCTEST_PLATFORM_WINDOWS
 
     struct SignalDefs
@@ -4435,7 +4449,7 @@ namespace {
             g_cs->numAssertsFailedCurrentTest_atomic++;
     }
 
-#if defined(DOCTEST_CONFIG_POSIX_SIGNALS) || defined(DOCTEST_CONFIG_WINDOWS_SEH)
+#if defined(DOCTEST_CONFIG_POSIX_SIGNALS) || defined(DOCTEST_CONFIG_WINDOWS_SEH) || defined(DOCTEST_CONFIG_CUSTOM_CRASH_HANDLER)
     void reportFatal(const std::string& message) {
         g_cs->failure_flags |= TestCaseFailureReason::Crash;
 
