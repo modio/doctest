@@ -4288,9 +4288,14 @@ namespace {
             // The following settings are taken from google test, and more
             // specifically from UnitTest::Run() inside of gtest.cc
 
+            // @MarkusR disable error modes if we are not on a desktop platform
+            UINT ErrorMode = 0;
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
             // the user does not want to see pop-up dialogs about crashes
-            prev_error_mode_1 = SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOALIGNMENTFAULTEXCEPT |
-                                             SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
+            ErrorMode = SEM_FAILCRITICALERRORS | SEM_NOALIGNMENTFAULTEXCEPT |
+                                             SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX;
+#endif
+            prev_error_mode_1 = SetErrorMode(ErrorMode);
             // This forces the abort message to go to stderr in all circumstances.
             prev_error_mode_2 = _set_error_mode(_OUT_TO_STDERR);
             // In the debug version, Visual Studio pops up a separate dialog
