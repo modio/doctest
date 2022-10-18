@@ -692,6 +692,9 @@ struct DOCTEST_INTERFACE AssertData
     // for normal asserts
     String m_decomp;
 
+    String m_expected;
+    String m_actual;
+
     // for specific exception-related asserts
     bool        m_threw_as;
     const char* m_exception_type;
@@ -1395,8 +1398,12 @@ DOCTEST_CLANG_SUPPRESS_WARNING_POP
         DOCTEST_NOINLINE void binary_assert(const DOCTEST_REF_WRAP(L) lhs,
                                             const DOCTEST_REF_WRAP(R) rhs) {
             m_failed = !RelationalComparator<comparison, L, R>()(lhs, rhs);
-            if(m_failed || getContextOptions()->success)
+            if(m_failed || getContextOptions()->success) {
                 m_decomp = stringifyBinaryExpr(lhs, ", ", rhs);
+
+                m_expected = toString(lhs);
+                m_actual = toString(rhs);
+            }
         }
 
         template <typename L>
