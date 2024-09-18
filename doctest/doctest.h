@@ -252,6 +252,11 @@ DOCTEST_MSVC_SUPPRESS_WARNING(26812) // Prefer 'enum class' over 'enum'
 #undef DOCTEST_CONFIG_POSIX_SIGNALS
 #endif // DOCTEST_CONFIG_NO_POSIX_SIGNALS
 
+#if defined(DOCTEST_CONFIG_CUSTOM_CRASH_HANDLER)
+#undef DOCTEST_CONFIG_POSIX_SIGNALS
+#undef DOCTEST_CONFIG_WINDOWS_SEH
+#endif
+
 #ifndef DOCTEST_CONFIG_NO_EXCEPTIONS
 #if !defined(__cpp_exceptions) && !defined(__EXCEPTIONS) && !defined(_CPPUNWIND)
 #define DOCTEST_CONFIG_NO_EXCEPTIONS
@@ -686,6 +691,9 @@ struct DOCTEST_INTERFACE AssertData
 
     // for normal asserts
     String m_decomp;
+
+    String m_expected;
+    String m_actual;
 
     // for specific exception-related asserts
     bool        m_threw_as;
@@ -1390,8 +1398,12 @@ DOCTEST_CLANG_SUPPRESS_WARNING_POP
         DOCTEST_NOINLINE void binary_assert(const DOCTEST_REF_WRAP(L) lhs,
                                             const DOCTEST_REF_WRAP(R) rhs) {
             m_failed = !RelationalComparator<comparison, L, R>()(lhs, rhs);
-            if(m_failed || getContextOptions()->success)
+            if(m_failed || getContextOptions()->success) {
                 m_decomp = stringifyBinaryExpr(lhs, ", ", rhs);
+
+                m_expected = toString(lhs);
+                m_actual = toString(rhs);
+            }
         }
 
         template <typename L>
@@ -4172,7 +4184,17 @@ namespace detail {
 namespace {
     using namespace detail;
 
-#if !defined(DOCTEST_CONFIG_POSIX_SIGNALS) && !defined(DOCTEST_CONFIG_WINDOWS_SEH)
+#if defined(DOCTEST_CONFIG_CUSTOM_CRASH_HANDLER)
+    struct FatalConditionHandler
+    {
+        FatalConditionHandler();
+        ~FatalConditionHandler();
+
+        static void reset();
+        static void allocateAltStackMem();
+        static void freeAltStackMem();
+    };
+#elif !defined(DOCTEST_CONFIG_POSIX_SIGNALS) && !defined(DOCTEST_CONFIG_WINDOWS_SEH)
     struct FatalConditionHandler
     {
         static void reset() {}
@@ -4273,9 +4295,14 @@ namespace {
             // The following settings are taken from google test, and more
             // specifically from UnitTest::Run() inside of gtest.cc
 
+            // @MarkusR disable error modes if we are not on a desktop platform
+            UINT ErrorMode = 0;
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
             // the user does not want to see pop-up dialogs about crashes
-            prev_error_mode_1 = SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOALIGNMENTFAULTEXCEPT |
-                                             SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
+            ErrorMode = SEM_FAILCRITICALERRORS | SEM_NOALIGNMENTFAULTEXCEPT |
+                                             SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX;
+#endif
+            prev_error_mode_1 = SetErrorMode(ErrorMode);
             // This forces the abort message to go to stderr in all circumstances.
             prev_error_mode_2 = _set_error_mode(_OUT_TO_STDERR);
             // In the debug version, Visual Studio pops up a separate dialog
@@ -4330,7 +4357,6 @@ namespace {
     bool FatalConditionHandler::isSet = false;
     ULONG FatalConditionHandler::guaranteeSize = 0;
     LPTOP_LEVEL_EXCEPTION_FILTER FatalConditionHandler::previousTop = nullptr;
-
 #else // DOCTEST_PLATFORM_WINDOWS
 
     struct SignalDefs
@@ -4435,7 +4461,7 @@ namespace {
             g_cs->numAssertsFailedCurrentTest_atomic++;
     }
 
-#if defined(DOCTEST_CONFIG_POSIX_SIGNALS) || defined(DOCTEST_CONFIG_WINDOWS_SEH)
+#if defined(DOCTEST_CONFIG_POSIX_SIGNALS) || defined(DOCTEST_CONFIG_WINDOWS_SEH) || defined(DOCTEST_CONFIG_CUSTOM_CRASH_HANDLER)
     void reportFatal(const std::string& message) {
         g_cs->failure_flags |= TestCaseFailureReason::Crash;
 
