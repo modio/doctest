@@ -126,8 +126,8 @@ function(doctest_discover_tests TARGET)
   string(SUBSTRING ${args_hash} 0 7 args_hash)
 
   # Define rule to generate test list for aforementioned test executable
-  set(ctest_include_file "${CMAKE_CURRENT_BINARY_DIR}/${TARGET}_include-${args_hash}.cmake")
-  set(ctest_tests_file "${CMAKE_CURRENT_BINARY_DIR}/${TARGET}_tests-${args_hash}.cmake")
+  set(ctest_include_file "${CMAKE_CURRENT_BINARY_DIR}/${TARGET}_include-${args_hash}.cmake" CACHE STRING "")
+  set(ctest_tests_file "${CMAKE_CURRENT_BINARY_DIR}/${TARGET}_tests-${args_hash}.cmake" CACHE STRING "")
   get_property(crosscompiling_emulator
     TARGET ${TARGET}
     PROPERTY CROSSCOMPILING_EMULATOR
@@ -185,5 +185,5 @@ endfunction()
 ###############################################################################
 
 set(_DOCTEST_DISCOVER_TESTS_SCRIPT
-  ${CMAKE_CURRENT_LIST_DIR}/doctestAddTests.cmake
+  ${CMAKE_CURRENT_LIST_DIR}/doctestAddTests.cmake CACHE STRING "cmake internal tests script"
 )
