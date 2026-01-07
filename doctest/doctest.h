@@ -1401,8 +1401,8 @@ DOCTEST_CLANG_SUPPRESS_WARNING_POP
             if(m_failed || getContextOptions()->success) {
                 m_decomp = stringifyBinaryExpr(lhs, ", ", rhs);
 
-                m_expected = toString(lhs);
-                m_actual = toString(rhs);
+                m_expected = toString(rhs);
+                m_actual = toString(lhs);
             }
         }
 
